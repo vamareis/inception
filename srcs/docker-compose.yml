@@ -1,0 +1,119 @@
+# srcs/docker-compose.yml
+name: inception
+
+services:
+  mariadb:
+    build:
+      context: ./requirements/mariadb
+      args:
+        BASE_IMAGE: ${BASE_IMAGE}
+        OS_VERSION: ${OS_VERSION}
+    image: mariadb                # image name = service name (subject requirement)
+    container_name: mariadb
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      # Passwords are read by entrypoint from /run/secrets/*
+    volumes:
+      - db-data:/var/lib/mysql
+      # secrets as bind-mounted files (no swarm needed)
+      - type: bind
+        source: ../secrets/db_root_password.txt
+        target: /run/secrets/db_root_password.txt
+        read_only: true
+      - type: bind
+        source: ../secrets/db_password.txt
+        target: /run/secrets/db_password.txt
+        read_only: true
+    expose:
+      - "3306"
+    networks:
+      - inception
+
+  wordpress:
+    build:
+      context: ./requirements/wordpress
+      args:
+        BASE_IMAGE: ${BASE_IMAGE}
+        OS_VERSION: ${OS_VERSION}
+    image: wordpress
+    container_name: wordpress
+    restart: always
+    depends_on:
+      - mariadb
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+      DB_HOST: mariadb
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      WP_TITLE: ${WP_TITLE}
+      WP_ADMIN_USER: ${WP_ADMIN_USER}      # must NOT contain “admin/administrator”
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL}
+      # Admin & DB passwords read by entrypoint from /run/secrets/*
+    volumes:
+      - wp-data:/var/www/html
+      - type: bind
+        source: ../secrets/db_password.txt
+        target: /run/secrets/db_password.txt
+        read_only: true
+      - type: bind
+        source: ../secrets/credentials.txt   # reuse existing file for admin password
+        target: /run/secrets/wp_admin_password.txt
+        read_only: true
+    expose:
+      - "9000"
+    networks:
+      - inception
+
+  nginx:
+    build:
+      context: ./requirements/nginx
+      args:
+        BASE_IMAGE: ${BASE_IMAGE}
+        OS_VERSION: ${OS_VERSION}
+    image: nginx
+    container_name: nginx
+    restart: always
+    depends_on:
+      - wordpress
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+    ports:
+      - "443:443"                   # sole public entry point (TLS only)
+    volumes:
+      - wp-data:/var/www/html:ro    # serve WP files; php via fastcgi_pass to wp-fpm:9000
+      - type: bind
+        source: ./requirements/nginx/conf
+        target: /etc/nginx/conf.d
+        read_only: true
+      # If you decide to persist self-signed certs, add another bind here:
+      # - certs-data:/etc/nginx/certs
+    networks:
+      - inception
+
+networks:
+  inception:
+    name: incepnet
+    driver: bridge
+
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${VOLUME}/db      # e.g., /home/vamachad/data/db
+      o: bind
+  wp-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${VOLUME}/wp      # e.g., /home/vamachad/data/wp
+      o: bind
+# Optional:
+#  certs-data:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: ${VOLUME}/certs
+#      o: bind

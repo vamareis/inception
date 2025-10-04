@@ -1,0 +1,24 @@
+[mysqld]
+# --- Networking / runtime ---
+bind-address         = 0.0.0.0
+port                 = 3306
+socket               = /run/mysqld/mysqld.sock
+pid-file             = /run/mysqld/mysqld.pid
+skip-name-resolve    = ON         # faster DNS; harmless "ignored" notes during temp bootstrap may appear
+
+# --- Charset / collation ---
+character-set-server = utf8mb4
+collation-server     = utf8mb4_unicode_ci
+
+# --- Silence common container warnings ---
+innodb_use_native_aio = 0         # avoid io_uring/native AIO warnings in containers
+binlog_expire_logs_seconds = 0    # disable binlog expiry setting so no "use --log-bin" warning
+# (Do NOT enable log-bin for Inception unless you actually want replication/PITR)
+
+# --- Sensible low-noise defaults for small lab VMs (optional) ---
+#max_connections      = 100
+#table_open_cache     = 200
+#tmp_table_size       = 32M
+#innodb_buffer_pool_size = 128M
+#log_error_verbosity  = 2          # 1=errors, 2=+warnings, 3=+notes
+
