@@ -47,7 +47,7 @@ clean:
 fclean: stop clean
 	docker system prune -af
 	@if [ -d /home/vamachad/data ]; then \
-	 echo "\nInput sudo password to delete volumes"; \
+	 echo "Deleting volumes"; \
 	 sudo rm -rf /home/vamachad/data; \
 	fi
 	@if [ -d secrets ]; then \
