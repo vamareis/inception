@@ -12,6 +12,12 @@ case "$DB_NAME" in
     exit 1;;
 esac
 
+case "$DB_USER" in
+  ''|*[!A-Za-z0-9_]*)
+    echo "[mariadb][ERROR] MYSQL_USER must match [A-Za-z0-9_]+; got: '$DB_USER'" >&2
+    exit 1;;
+esac
+
 # ---- Secrets (mounted by compose) ----
 DB_ROOT_PASS="$(cat /run/secrets/db_root_password.txt)"
 DB_PASS="$(cat /run/secrets/db_password.txt)"

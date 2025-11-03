@@ -40,16 +40,26 @@ clean:
 fclean: stop clean
 	docker system prune -af
 	@if [ -d /home/vamachad/data ]; then \
-         echo "Deleting volumes"; \
-         sudo rm -rf /home/vamachad/data; \
-        fi
+		echo "Deleting volumes"; \
+		sudo rm -rf /home/vamachad/data; \
+	fi
 	@if [ -d secrets ]; then \
-         echo "Deleting secrets"; \
-         rm -rf secrets; \
-        fi
+		echo "Deleting secrets"; \
+		rm -rf secrets; \
+	fi
 
 run: all
-	@echo "Open: https://$(DOMAIN)"
+	@echo "Waiting for https://$(DOMAIN) to become reachable..."
+	@for i in $(shell seq 1 60); do \
+		if curl -sk --head https://$(DOMAIN) | grep -q "200 OK"; then \
+			echo "\033[32m[OK]\033[0m  Site is up at https://$(DOMAIN)"; \
+			exit 0; \
+		fi; \
+		sleep 2; \
+	done; \
+	echo "\033[31m[ERROR]\033[0m  Site did not become ready within 60s" >&2; \
+	exit 1
 
 re: fclean all
 rerun: re run
+
